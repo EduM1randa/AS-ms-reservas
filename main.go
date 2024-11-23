@@ -1,28 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"net"
+	"net/http"
 
 	"ms-reservas/controllers"
 	"ms-reservas/database"
-
-	"google.golang.org/grpc"
 )
 
 func main() {
 	client := database.ConnectMongoDB()
 
-	lis, err := net.Listen("tcp", ":9000")
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+	http.HandleFunc("/", helloHandler)
+	fmt.Println("Starting server at port 8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
-
-	grpcServer := grpc.NewServer()
 
 	controllers.SetMongoClient(client)
+}
 
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve gRPC over port: %v", err)
-	}
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello, World!")
 }
