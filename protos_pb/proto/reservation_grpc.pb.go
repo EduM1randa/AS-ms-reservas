@@ -31,17 +31,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ReservationServiceClient interface {
-	// RPC para crear una reserva
 	CreateReservation(ctx context.Context, in *CreateReservationRequest, opts ...grpc.CallOption) (*Response, error)
-	// RPC para obtener una reserva por ID
 	GetReservationByID(ctx context.Context, in *GetReservationByIDRequest, opts ...grpc.CallOption) (*Reservation, error)
-	// RPC para obtener reservas por usuario
 	GetReservationsByUserID(ctx context.Context, in *GetReservationsByUserIDRequest, opts ...grpc.CallOption) (*Reservations, error)
-	// RPC para obtener reservas por fecha
 	GetReservationsByDate(ctx context.Context, in *GetReservationsByDateRequest, opts ...grpc.CallOption) (*Reservations, error)
-	// RPC para actualizar una reserva
 	UpdateReservation(ctx context.Context, in *UpdateReservationRequest, opts ...grpc.CallOption) (*Response, error)
-	// RPC para eliminar una reserva
 	DeleteReservation(ctx context.Context, in *DeleteReservationRequest, opts ...grpc.CallOption) (*Response, error)
 }
 
@@ -117,17 +111,11 @@ func (c *reservationServiceClient) DeleteReservation(ctx context.Context, in *De
 // All implementations must embed UnimplementedReservationServiceServer
 // for forward compatibility.
 type ReservationServiceServer interface {
-	// RPC para crear una reserva
 	CreateReservation(context.Context, *CreateReservationRequest) (*Response, error)
-	// RPC para obtener una reserva por ID
 	GetReservationByID(context.Context, *GetReservationByIDRequest) (*Reservation, error)
-	// RPC para obtener reservas por usuario
 	GetReservationsByUserID(context.Context, *GetReservationsByUserIDRequest) (*Reservations, error)
-	// RPC para obtener reservas por fecha
 	GetReservationsByDate(context.Context, *GetReservationsByDateRequest) (*Reservations, error)
-	// RPC para actualizar una reserva
 	UpdateReservation(context.Context, *UpdateReservationRequest) (*Response, error)
-	// RPC para eliminar una reserva
 	DeleteReservation(context.Context, *DeleteReservationRequest) (*Response, error)
 	mustEmbedUnimplementedReservationServiceServer()
 }
@@ -333,13 +321,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TableServiceClient interface {
-	// RPC para crear una mesa
 	CreateTable(ctx context.Context, in *CreateTableRequest, opts ...grpc.CallOption) (*Response, error)
-	// RPC para obtener todas las mesas
 	GetTables(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Tables, error)
-	// RPC para actualizar el estado o capacidad de una mesa
 	UpdateTable(ctx context.Context, in *UpdateTableRequest, opts ...grpc.CallOption) (*Response, error)
-	// RPC para obtener mesas disponibles para un día específico
 	GetAvailableTables(ctx context.Context, in *GetAvailableTablesRequest, opts ...grpc.CallOption) (*Tables, error)
 }
 
@@ -395,13 +379,9 @@ func (c *tableServiceClient) GetAvailableTables(ctx context.Context, in *GetAvai
 // All implementations must embed UnimplementedTableServiceServer
 // for forward compatibility.
 type TableServiceServer interface {
-	// RPC para crear una mesa
 	CreateTable(context.Context, *CreateTableRequest) (*Response, error)
-	// RPC para obtener todas las mesas
 	GetTables(context.Context, *Empty) (*Tables, error)
-	// RPC para actualizar el estado o capacidad de una mesa
 	UpdateTable(context.Context, *UpdateTableRequest) (*Response, error)
-	// RPC para obtener mesas disponibles para un día específico
 	GetAvailableTables(context.Context, *GetAvailableTablesRequest) (*Tables, error)
 	mustEmbedUnimplementedTableServiceServer()
 }

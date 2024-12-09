@@ -36,7 +36,7 @@ func CreateRes(reservation m.Reservation) error {
 	if reservation.Status == "" {
 		return fmt.Errorf("status is required")
 	}
-	collection := mongoClient.Database("reservations").Collection("reservations")
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	_, err := collection.InsertOne(context.TODO(), reservation)
 	if err != nil {
 		log.Printf("failed to insert reservation: %v", err)
@@ -79,7 +79,7 @@ func GetByIdHandler(req *pb.GetReservationByIDRequest) (*pb.Reservation, error) 
 }
 
 func GetReservationByID(id string) (*m.Reservation, error) {
-	collection := mongoClient.Database("reservations").Collection("reservations")
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	var reservation m.Reservation
 	err := collection.FindOne(context.TODO(), m.Reservation{ID: id}).Decode(&reservation)
 	if err != nil {
@@ -111,7 +111,7 @@ func GetReservationsByUserIDHandler(req *pb.GetReservationsByUserIDRequest) (*pb
 }
 
 func GetReservationsByUserID(userID string) ([]m.Reservation, error) {
-	collection := mongoClient.Database("reservations").Collection("reservations")
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	cursor, err := collection.Find(context.TODO(), bson.M{"user_id": userID})
 	if err != nil {
 		log.Printf("Failed to find reservations: %v", err)
@@ -149,7 +149,7 @@ func GetReservationsByDateHandler(req *pb.GetReservationsByDateRequest) (*pb.Res
 }
 
 func GetReservationsByDate(date string) ([]m.Reservation, error) {
-	collection := mongoClient.Database("reservations").Collection("reservations")
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	cursor, err := collection.Find(context.TODO(), bson.M{"reservation_date": date})
 	if err != nil {
 		log.Printf("failed to find reservations: %v", err)
@@ -189,7 +189,7 @@ func UpdateReservationHandler(req *pb.UpdateReservationRequest) (*pb.Response, e
 }
 
 func UpdateReservation(id string, update bson.M) error {
-	collection := mongoClient.Database("reservations").Collection("reservations")
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	_, err := collection.UpdateOne(context.TODO(), bson.M{"id": id}, bson.M{"$set": update})
 	if err != nil {
 		log.Printf("Failed to update reservation: %v", err)
@@ -209,7 +209,7 @@ func DeleteReservationHandler(req *pb.DeleteReservationRequest) (*pb.Response, e
 }
 
 func DeleteReservation(id string) error {
-	collection := mongoClient.Database("reservations").Collection("reservations")
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	_, err := collection.DeleteOne(context.TODO(), bson.M{"id": id})
 	if err != nil {
 		log.Printf("Failed to delete reservation: %v", err)

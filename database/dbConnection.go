@@ -13,8 +13,9 @@ import (
 )
 
 func ConnectMongoDB() *mongo.Client {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
 	}
 
 	uri := os.Getenv("MONGODB_URI")
@@ -30,16 +31,18 @@ func ConnectMongoDB() *mongo.Client {
 		panic(err)
 	}
 
-	defer func() {
-		if err = client.Disconnect(context.TODO()); err != nil {
-			panic(err)
-		}
-	}()
-
 	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Err(); err != nil {
 		panic(err)
 	}
 	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
+
+	// Verificar la conexión
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatalf("Failed to ping MongoDB: %v", err)
+	}
+
+	log.Println("Connected to MongoDB")
 
 	return client
 }

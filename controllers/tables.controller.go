@@ -33,7 +33,7 @@ func CreateTableHandler(req *pb.CreateTableRequest) (*pb.Response, error) {
 }
 
 func CreateTable(table m.Table) error {
-	collection := mongoClient.Database("reservations").Collection("tables")
+	collection := mongoClient.Database("reservations-db").Collection("tables")
 	_, err := collection.InsertOne(context.TODO(), table)
 	if err != nil {
 		log.Printf("failed to insert table: %v", err)
@@ -61,8 +61,9 @@ func GetTablesHandler(req *pb.Empty) (*pb.Tables, error) {
 }
 
 func GetTables() ([]m.Table, error) {
-	collection := mongoClient.Database("reservations").Collection("tables")
+	collection := mongoClient.Database("reservations-db").Collection("tables")
 	cursor, err := collection.Find(context.TODO(), bson.M{})
+
 	if err != nil {
 		log.Printf("failed to find tables: %v", err)
 		return nil, err
@@ -94,7 +95,7 @@ func UpdateTableHandler(req *pb.UpdateTableRequest) (*pb.Response, error) {
 }
 
 func UpdateTable(id string, update bson.M) error {
-	collection := mongoClient.Database("reservations").Collection("tables")
+	collection := mongoClient.Database("reservations-db").Collection("tables")
 	_, err := collection.UpdateOne(context.TODO(), bson.M{"id": id}, bson.M{"$set": update})
 	if err != nil {
 		log.Printf("failed to update table: %v", err)
@@ -123,7 +124,7 @@ func GetAvailableTablesHandler(req *pb.GetAvailableTablesRequest) (*pb.Tables, e
 }
 
 func GetAvailableTables(date string) ([]m.Table, error) {
-	collection := mongoClient.Database("reservations").Collection("tables")
+	collection := mongoClient.Database("reservations-db").Collection("tables")
 	cursor, err := collection.Find(context.TODO(), bson.M{"is_reserved": false, "reservation_date": date})
 	if err != nil {
 		log.Printf("failed to find available tables: %v", err)
