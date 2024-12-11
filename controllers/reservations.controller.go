@@ -31,6 +31,9 @@ func CreateRes(reservation m.Reservation) error {
 	if reservation.ReservationDate == "" {
 		return fmt.Errorf("reservationDate is required")
 	}
+	if reservation.ReservationTime == "" {
+		return fmt.Errorf("reservationTime is required")
+	}
 	if reservation.GuestCount == 0 {
 		return fmt.Errorf("guestCount is required")
 	}
@@ -44,6 +47,16 @@ func CreateRes(reservation m.Reservation) error {
 		return fmt.Errorf("invalid date format, expected dd-mm-yyyy")
 	}
 
+	const timeFormat = "15:04"
+	reservationTime, err := time.Parse(timeFormat, reservation.ReservationTime)
+	if err != nil {
+		return fmt.Errorf("invalid time format, expected HH:MM")
+	}
+
+	if reservationTime.Minute() == 0 {
+		return fmt.Errorf("reservation time cannot end in HH:00")
+	}
+
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	_, err = collection.InsertOne(context.TODO(), reservation)
 	if err != nil {
@@ -54,7 +67,7 @@ func CreateRes(reservation m.Reservation) error {
 }
 
 func CreateReservationHandler(req *pb.CreateReservationRequest) (*pb.Response, error) {
-	exists, err := ReservationExists(req.TableId, req.ReservationDate)
+	exists, err := ReservationExists(req.TableId, req.ReservationDate, req.ReservationTime)
 	if err != nil {
 		return &pb.Response{Message: "Failed to check existing reservations", Success: false}, err
 	}
@@ -66,6 +79,7 @@ func CreateReservationHandler(req *pb.CreateReservationRequest) (*pb.Response, e
 		UserId:          req.UserId,
 		TableId:         req.TableId,
 		ReservationDate: req.ReservationDate,
+		ReservationTime: req.ReservationTime,
 		GuestCount:      int(req.GuestCount),
 		Status:          req.Status,
 		CreateAt:        time.Now(),
@@ -258,9 +272,28 @@ func DeleteReservation(id string) error {
 	return nil
 }
 
-func ReservationExists(tableId, reservationDate string) (bool, error) {
+func ReservationExists(tableId, reservationDate, reservationTime string) (bool, error) {
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
-	filter := bson.M{"tableid": tableId, "reservationdate": reservationDate}
+
+	// Convertir la hora de la reserva a un objeto time.Time
+	const timeFormat = "15:04"
+	reservationStartTime, err := time.Parse(timeFormat, reservationTime)
+	if err != nil {
+		return false, fmt.Errorf("invalid time format, expected HH:MM")
+	}
+
+	// Calcular la hora de finalización de la reserva (1.5 horas después)
+	reservationEndTime := reservationStartTime.Add(90 * time.Minute)
+
+	// Buscar reservas que se superpongan con la nueva reserva
+	filter := bson.M{
+		"table_id":         tableId,
+		"reservation_date": reservationDate,
+		"$or": []bson.M{
+			{"reservation_time": bson.M{"$gte": reservationTime, "$lt": reservationEndTime.Format(timeFormat)}},
+			{"reservation_end_time": bson.M{"$gt": reservationTime, "$lte": reservationEndTime.Format(timeFormat)}},
+		},
+	}
 	count, err := collection.CountDocuments(context.TODO(), filter)
 	if err != nil {
 		log.Printf("failed to check existing reservations: %v", err)
