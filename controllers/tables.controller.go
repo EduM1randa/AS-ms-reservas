@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -179,10 +178,7 @@ func UpdateTableIsReserved(tableID string, isReserved bool) error {
 
 	collection := mongoClient.Database("reservations-db").Collection("tables")
 	update := bson.M{"isreserved": isReserved}
-	ok, err := collection.UpdateOne(context.TODO(), bson.M{"_id": objectId}, bson.M{"$set": update})
-
-	fmt.Println("err: ", err)
-	fmt.Println(ok)
+	_, err = collection.UpdateOne(context.TODO(), bson.M{"_id": objectId}, bson.M{"$set": update})
 
 	if err != nil {
 		log.Printf("failed to update table status: %v", err)

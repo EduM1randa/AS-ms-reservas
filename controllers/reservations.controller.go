@@ -41,6 +41,15 @@ func CreateRes(reservation m.Reservation) error {
 		return fmt.Errorf("status is required")
 	}
 
+	validStatuses := map[string]bool{
+		"confirmada": true,
+		"cancelada":  true,
+		"completada": true,
+	}
+	if !validStatuses[reservation.Status] {
+		return fmt.Errorf("invalid status, expected one of: confirmada, cancelada, completada")
+	}
+
 	const dateFormat = "02-01-2006"
 	_, err := time.Parse(dateFormat, reservation.ReservationDate)
 	if err != nil {
@@ -212,18 +221,26 @@ func UpdateReservationHandler(req *pb.UpdateReservationRequest) (*pb.Response, e
 	id := req.Id
 	update := bson.M{}
 	if req.TableId != "" {
-		update["table_id"] = req.TableId
+		update["tableid"] = req.TableId
 	}
 	if req.ReservationDate != "" {
-		update["reservation_date"] = req.ReservationDate
+		update["reservationdate"] = req.ReservationDate
 	}
 	if req.GuestCount != 0 {
-		update["guest_count"] = req.GuestCount
+		update["guestcount"] = req.GuestCount
 	}
 	if req.Status != "" {
 		update["status"] = req.Status
+		validStatuses := map[string]bool{
+			"confirmada": true,
+			"cancelada":  true,
+			"completada": true,
+		}
+		if !validStatuses[req.Status] {
+			return nil, fmt.Errorf("invalid status, expected one of: confirmada, cancelada, completada")
+		}
 	}
-	update["update_at"] = time.Now()
+	update["updateat"] = time.Now()
 
 	err := UpdateReservation(id, update)
 	if err != nil {
@@ -245,6 +262,22 @@ func UpdateReservation(id string, update bson.M) error {
 		log.Printf("Failed to update reservation: %v", err)
 		return err
 	}
+
+	if status, ok := update["status"].(string); ok && (status == "completada" || status == "cancelada") {
+		var reservation m.Reservation
+		err = collection.FindOne(context.TODO(), bson.M{"_id": objectID}).Decode(&reservation)
+		if err != nil {
+			log.Printf("Failed to find updated reservation: %v", err)
+			return err
+		}
+
+		err = UpdateTableIsReserved(reservation.TableId, false)
+		if err != nil {
+			log.Printf("Failed to update table status: %v", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
