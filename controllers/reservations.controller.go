@@ -10,6 +10,7 @@ import (
 	pb "ms-reservas/protos_pb/proto"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -36,8 +37,15 @@ func CreateRes(reservation m.Reservation) error {
 	if reservation.Status == "" {
 		return fmt.Errorf("status is required")
 	}
+
+	const dateFormat = "30-12-2006"
+	_, err := time.Parse(dateFormat, reservation.ReservationDate)
+	if err != nil {
+		return fmt.Errorf("invalid date format, expected dd-mm-yyyy")
+	}
+
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
-	_, err := collection.InsertOne(context.TODO(), reservation)
+	_, err = collection.InsertOne(context.TODO(), reservation)
 	if err != nil {
 		log.Printf("failed to insert reservation: %v", err)
 		return err
@@ -46,6 +54,14 @@ func CreateRes(reservation m.Reservation) error {
 }
 
 func CreateReservationHandler(req *pb.CreateReservationRequest) (*pb.Response, error) {
+	exists, err := ReservationExists(req.TableId, req.ReservationDate)
+	if err != nil {
+		return &pb.Response{Message: "Failed to check existing reservations", Success: false}, err
+	}
+	if exists {
+		return &pb.Response{Message: "Reservation already exists for this table and date", Success: false}, nil
+	}
+
 	reservation := m.Reservation{
 		UserId:          req.UserId,
 		TableId:         req.TableId,
@@ -54,10 +70,16 @@ func CreateReservationHandler(req *pb.CreateReservationRequest) (*pb.Response, e
 		Status:          req.Status,
 		CreateAt:        time.Now(),
 	}
-	err := CreateRes(reservation)
+	err = CreateRes(reservation)
 	if err != nil {
 		return &pb.Response{Message: "Failed to create reservation", Success: false}, err
 	}
+
+	err = UpdateTableIsReserved(req.TableId, true)
+	if err != nil {
+		return &pb.Response{Message: "Failed to update table status", Success: false}, err
+	}
+
 	return &pb.Response{Message: "Reservation created successfully", Success: true}, nil
 }
 
@@ -79,9 +101,15 @@ func GetByIdHandler(req *pb.GetReservationByIDRequest) (*pb.Reservation, error) 
 }
 
 func GetReservationByID(id string) (*m.Reservation, error) {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("invalid id format: %v", err)
+		return nil, err
+	}
+
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
 	var reservation m.Reservation
-	err := collection.FindOne(context.TODO(), m.Reservation{ID: id}).Decode(&reservation)
+	err = collection.FindOne(context.TODO(), bson.M{"_id": objectID}).Decode(&reservation)
 	if err != nil {
 		log.Printf("Failed to find reservation: %v", err)
 		return nil, err
@@ -112,7 +140,7 @@ func GetReservationsByUserIDHandler(req *pb.GetReservationsByUserIDRequest) (*pb
 
 func GetReservationsByUserID(userID string) ([]m.Reservation, error) {
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
-	cursor, err := collection.Find(context.TODO(), bson.M{"user_id": userID})
+	cursor, err := collection.Find(context.TODO(), bson.M{"userid": userID})
 	if err != nil {
 		log.Printf("Failed to find reservations: %v", err)
 		return nil, err
@@ -150,7 +178,7 @@ func GetReservationsByDateHandler(req *pb.GetReservationsByDateRequest) (*pb.Res
 
 func GetReservationsByDate(date string) ([]m.Reservation, error) {
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
-	cursor, err := collection.Find(context.TODO(), bson.M{"reservation_date": date})
+	cursor, err := collection.Find(context.TODO(), bson.M{"reservationdate": date})
 	if err != nil {
 		log.Printf("failed to find reservations: %v", err)
 		return nil, err
@@ -189,8 +217,14 @@ func UpdateReservationHandler(req *pb.UpdateReservationRequest) (*pb.Response, e
 }
 
 func UpdateReservation(id string, update bson.M) error {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("invalid id format: %v", err)
+		return nil
+	}
+
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
-	_, err := collection.UpdateOne(context.TODO(), bson.M{"id": id}, bson.M{"$set": update})
+	_, err = collection.UpdateOne(context.TODO(), bson.M{"_id": objectID}, bson.M{"$set": update})
 	if err != nil {
 		log.Printf("Failed to update reservation: %v", err)
 		return err
@@ -209,11 +243,28 @@ func DeleteReservationHandler(req *pb.DeleteReservationRequest) (*pb.Response, e
 }
 
 func DeleteReservation(id string) error {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Printf("invalid id format: %v", err)
+		return nil
+	}
+
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
-	_, err := collection.DeleteOne(context.TODO(), bson.M{"id": id})
+	_, err = collection.DeleteOne(context.TODO(), bson.M{"_id": objectID})
 	if err != nil {
 		log.Printf("Failed to delete reservation: %v", err)
 		return err
 	}
 	return nil
+}
+
+func ReservationExists(tableId, reservationDate string) (bool, error) {
+	collection := mongoClient.Database("reservations-db").Collection("reservations")
+	filter := bson.M{"tableid": tableId, "reservationdate": reservationDate}
+	count, err := collection.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		log.Printf("failed to check existing reservations: %v", err)
+		return false, err
+	}
+	return count > 0, nil
 }
