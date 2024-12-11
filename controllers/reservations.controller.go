@@ -41,7 +41,7 @@ func CreateRes(reservation m.Reservation) error {
 		return fmt.Errorf("status is required")
 	}
 
-	const dateFormat = "30-12-2006"
+	const dateFormat = "02-01-2006"
 	_, err := time.Parse(dateFormat, reservation.ReservationDate)
 	if err != nil {
 		return fmt.Errorf("invalid date format, expected dd-mm-yyyy")
@@ -53,8 +53,10 @@ func CreateRes(reservation m.Reservation) error {
 		return fmt.Errorf("invalid time format, expected HH:MM")
 	}
 
-	if reservationTime.Minute() == 0 {
-		return fmt.Errorf("reservation time cannot end in HH:00")
+	fmt.Println(reservationTime.Minute())
+
+	if reservationTime.Minute() != 0 {
+		return fmt.Errorf("reservation time must be end in 00")
 	}
 
 	collection := mongoClient.Database("reservations-db").Collection("reservations")
@@ -277,22 +279,16 @@ func ReservationExists(tableId, reservationDate, reservationTime string) (bool, 
 
 	// Convertir la hora de la reserva a un objeto time.Time
 	const timeFormat = "15:04"
-	reservationStartTime, err := time.Parse(timeFormat, reservationTime)
+	_, err := time.Parse(timeFormat, reservationTime)
 	if err != nil {
 		return false, fmt.Errorf("invalid time format, expected HH:MM")
 	}
 
-	// Calcular la hora de finalización de la reserva (1.5 horas después)
-	reservationEndTime := reservationStartTime.Add(90 * time.Minute)
-
 	// Buscar reservas que se superpongan con la nueva reserva
 	filter := bson.M{
-		"table_id":         tableId,
-		"reservation_date": reservationDate,
-		"$or": []bson.M{
-			{"reservation_time": bson.M{"$gte": reservationTime, "$lt": reservationEndTime.Format(timeFormat)}},
-			{"reservation_end_time": bson.M{"$gt": reservationTime, "$lte": reservationEndTime.Format(timeFormat)}},
-		},
+		"tableid":         tableId,
+		"reservationdate": reservationDate,
+		"reservationtime": reservationTime,
 	}
 	count, err := collection.CountDocuments(context.TODO(), filter)
 	if err != nil {
